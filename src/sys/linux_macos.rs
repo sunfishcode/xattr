@@ -10,20 +10,11 @@ use rustix::path::Arg;
 
 use crate::util::allocate_loop;
 
-use std::os::raw::c_char;
-
 #[cfg(not(target_os = "macos"))]
 pub const ENOATTR: i32 = rustix::io::Errno::NODATA.raw_os_error();
 
 #[cfg(target_os = "macos")]
 pub const ENOATTR: i32 = rustix::io::Errno::NOATTR.raw_os_error();
-
-// Convert an `&mut [u8]` to an `&mut [c_char]`
-#[inline]
-fn as_listxattr_buffer(buf: &mut [u8]) -> &mut [c_char] {
-    // SAFETY: u8 and i8 have the same size and alignment
-    unsafe { &mut *(buf as *mut [u8] as *mut [c_char]) }
-}
 
 /// An iterator over a set of extended attributes names.
 #[derive(Default)]
@@ -89,7 +80,7 @@ pub fn remove_fd(fd: BorrowedFd<'_>, name: &OsStr) -> io::Result<()> {
 }
 
 pub fn list_fd(fd: BorrowedFd<'_>) -> io::Result<XAttrs> {
-    let vec = allocate_loop(|buf| rfs::flistxattr(fd, as_listxattr_buffer(buf)))?;
+    let vec = allocate_loop(|buf| rfs::flistxattr(fd, buf))?;
     Ok(XAttrs {
         data: vec.into_boxed_slice(),
         offset: 0,
@@ -130,7 +121,7 @@ pub fn list_path(path: &Path, deref: bool) -> io::Result<XAttrs> {
         rfs::llistxattr
     };
     let path = path.as_cow_c_str()?;
-    let vec = allocate_loop(|buf| listxattr_func(&*path, as_listxattr_buffer(buf)))?;
+    let vec = allocate_loop(|buf| listxattr_func(&*path, buf))?;
     Ok(XAttrs {
         data: vec.into_boxed_slice(),
         offset: 0,
