@@ -115,13 +115,15 @@ pub fn remove_path(path: &Path, name: &OsStr, deref: bool) -> io::Result<()> {
 }
 
 pub fn list_path(path: &Path, deref: bool) -> io::Result<XAttrs> {
-    let listxattr_func = if deref {
-        rfs::listxattr
-    } else {
-        rfs::llistxattr
-    };
     let path = path.as_cow_c_str()?;
-    let vec = allocate_loop(|buf| listxattr_func(&*path, buf))?;
+    let vec = allocate_loop(|buf| {
+        let listxattr_func = if deref {
+            rfs::listxattr
+        } else {
+            rfs::llistxattr
+        };
+        listxattr_func(&*path, buf)
+    })?;
     Ok(XAttrs {
         data: vec.into_boxed_slice(),
         offset: 0,
